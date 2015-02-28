@@ -1,16 +1,16 @@
 meteor-linkedin
 ===============
-Forked from https://github.com/yefim/meteor-linkedin.git
+Forked from https://github.com/puali/meteor-linkedin.git
 
 A OAuth2 wrapper for the LinkedIn API
 
 ##Installation
 
 * Install accounts-ui pacakge: `meteor add accounts-ui`
-* `meteor add pauli:linkedin`
+* `meteor add jamesfirst:linkedin`
 
 ##Usage
 
 Creates a new function `Meteor.loginWithLinkedin(options, callback)`
 
-This is the backbone of `pauli:accounts-linkedin`
+This is the backbone of `jamesfirst:accounts-linkedin`

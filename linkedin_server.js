@@ -24,8 +24,9 @@ OAuth.registerService('linkedin', 2, null, function(query) {
 
   // list of extra fields
   // http://developer.linkedin.com/documents/profile-fields
-  var extraFields = 'email-address,location:(name),num-connections,picture-url,public-profile-url,skills,languages,three-current-positions,recommendations-received';
-
+  var extraFields = 'connections?modified=new,email-address,location:(name),num-connections,picture-url,public-profile-url,skills,languages,three-current-positions,recommendations-received';
+  //var extraFields = 'connections%3Fmodified%3Dnew%2Cemail-address%2Clocation%3A(name)%2Cnum-connections%2Cpicture-url%2Cpublic-profile-url%2Cskills%2Clanguages%2Cthree-current-positions%2Crecommendations-received';
+  //var extraFields = 'email-address%2Clocation%3A(name)%2Cnum-connections%2Cpicture-url%2Cpublic-profile-url%2Cskills%2Clanguages%2Cthree-current-positions%2Crecommendations-received';
   // remove the whitespaces which could break the request
   extraFields = extraFields.replace(/\s+/g, '');
 
@@ -42,7 +43,7 @@ OAuth.registerService('linkedin', 2, null, function(query) {
 });
 
 var getExtraData = function(accessToken, extraFields, fields) {
-  var url = 'https://api.linkedin.com/v1/people/~:(' + extraFields + ')';
+  var url = 'https://api.linkedin.com/v1/people/~/' + extraFields;
   var response = Meteor.http.get(url, {
     params: {
       oauth2_access_token: accessToken,
