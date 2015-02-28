@@ -1,6 +1,6 @@
 meteor-linkedin
 ===============
-Forked from https://github.com/puali/meteor-linkedin.git
+Forked from https://github.com/PauliBuccini/meteor-linkedin
 
 A OAuth2 wrapper for the LinkedIn API
 
