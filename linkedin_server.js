@@ -2,129 +2,151 @@ var OAuth = Package.oauth.OAuth;
 
 var urlUtil = Npm.require('url');
 
-OAuth.registerService('linkedin', 2, null, function(query) {
+OAuth.registerService('linkedin', 2, null, function (query) {
 
-  var response = getTokenResponse(query);
-  var accessToken = response.accessToken;
-  var identity = getIdentity(accessToken);
-  var profileUrl = identity.siteStandardProfileRequest.url;
-  var urlParts = urlUtil.parse(profileUrl, true);
+    var response = getTokenResponse(query);
+    var accessToken = response.accessToken;
+    var identity = getIdentity(accessToken);
+    var profileUrl = identity.siteStandardProfileRequest.url;
+    var urlParts = urlUtil.parse(profileUrl, true);
 
-  var serviceData = {
-    id: urlParts.query.id || Random.id(),
-    accessToken: accessToken,
-    expiresAt: (+new Date) + (1000 * response.expiresIn)
-  };
+    var serviceData = {
+        id: urlParts.query.id || Random.id(),
+        accessToken: accessToken,
+        expiresAt: (+new Date) + (1000 * response.expiresIn)
+    };
 
-  var whiteListed = ['firstName', 'headline', 'lastName'];
+    var whiteListed = ['firstName', 'headline', 'lastName'];
 
-  // include all fields from linkedin
-  // https://developer.linkedin.com/documents/authentication
-  var fields = _.pick(identity, whiteListed);
+    // include all fields from linkedin
+    // https://developer.linkedin.com/documents/authentication
+    var fields = _.pick(identity, whiteListed);
 
-  // list of extra fields
-  // http://developer.linkedin.com/documents/profile-fields
-  var extraFields = 'connections?modified=new,email-address,location:(name),num-connections,picture-url,public-profile-url,skills,languages,three-current-positions,recommendations-received';
-  //var extraFields = 'connections%3Fmodified%3Dnew%2Cemail-address%2Clocation%3A(name)%2Cnum-connections%2Cpicture-url%2Cpublic-profile-url%2Cskills%2Clanguages%2Cthree-current-positions%2Crecommendations-received';
-  //var extraFields = 'email-address%2Clocation%3A(name)%2Cnum-connections%2Cpicture-url%2Cpublic-profile-url%2Cskills%2Clanguages%2Cthree-current-positions%2Crecommendations-received';
-  // remove the whitespaces which could break the request
-  extraFields = extraFields.replace(/\s+/g, '');
+    // list of extra fields
+    // http://developer.linkedin.com/documents/profile-fields
+    var extraFields = 'email-address,location:(name),num-connections,picture-url,public-profile-url,skills,languages,three-current-positions,recommendations-received';
+    // remove the whitespaces which could break the request
+    extraFields = extraFields.replace(/\s+/g, '');
 
-  fields = getExtraData(accessToken, extraFields, fields);
+    fields = getExtraData(accessToken, extraFields, fields);
+    fields = getConnection(accessToken, fields);
+    fields = getProfile(accessToken, fields);
 
-  _.extend(serviceData, fields);
+    _.extend(serviceData, fields);
 
-  return {
-    serviceData: serviceData,
-    options: {
-      profile: fields
-    }
-  };
+    return {
+        serviceData: serviceData,
+        options: {
+            profile: fields
+        }
+    };
 });
 
-var getExtraData = function(accessToken, extraFields, fields) {
-  var url = 'https://api.linkedin.com/v1/people/~/' + extraFields;
-  var response = Meteor.http.get(url, {
-    params: {
-      oauth2_access_token: accessToken,
-      format: 'json'
-    }
-  }).data;
-  return _.extend(fields, response);
+var getExtraData = function (accessToken, extraFields, fields) {
+    var url = 'https://api.linkedin.com/v1/people/~:(' + extraFields + ')';
+    var response = Meteor.http.get(url, {
+        params: {
+            oauth2_access_token: accessToken,
+            format: 'json'
+        }
+    }).data;
+    return _.extend(fields, response);
+}
+
+var getConnection = function (accessToken, fields) {
+    var url = 'https://api.linkedin.com/v1/people/~/connections?modified=new';
+    var response = Meteor.http.get(url, {
+        params: {
+            oauth2_access_token: accessToken,
+            format: 'json'
+        }
+    }).data;
+    return _.extend(fields, response);
+}
+
+var getProfile = function (accessToken, fields) {
+    var url = 'https://api.linkedin.com/v1/people/~';
+    var response = Meteor.http.get(url, {
+        params: {
+            oauth2_access_token: accessToken,
+            format: 'json'
+        }
+    }).data;
+    return _.extend(fields, response);
 }
 
 // checks whether a string parses as JSON
 var isJSON = function (str) {
-  try {
-    JSON.parse(str);
-    return true;
-  } catch (e) {
-    return false;
-  }
+    try {
+        JSON.parse(str);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
 
 // returns an object containing:
 // - accessToken
 // - expiresIn: lifetime of token in seconds
 var getTokenResponse = function (query) {
-  var config = ServiceConfiguration.configurations.findOne({service: 'linkedin'});
-  if (!config)
-    throw new ServiceConfiguration.ConfigError("Service not configured");
+    var config = ServiceConfiguration.configurations.findOne({service: 'linkedin'});
+    if (!config)
+        throw new ServiceConfiguration.ConfigError("Service not configured");
 
-  var responseContent;
-  try {
+    var responseContent;
+    try {
 
-    // Request an access token
-    // responseContent = Meteor.http.post(
-    //   "https://api.linkedin.com/uas/oauth2/accessToken", {
-    //     params: {
-    //       grant_type: 'authorization_code',
-    //       client_id: config.clientId,
-    //       client_secret: config.secret,
-    //       code: query.code,
-    //       redirect_uri: Meteor.absoluteUrl("_oauth/linkedin?close")
-    //     }
-    //   }).content;
+        // Request an access token
+        // responseContent = Meteor.http.post(
+        //   "https://api.linkedin.com/uas/oauth2/accessToken", {
+        //     params: {
+        //       grant_type: 'authorization_code',
+        //       client_id: config.clientId,
+        //       client_secret: config.secret,
+        //       code: query.code,
+        //       redirect_uri: Meteor.absoluteUrl("_oauth/linkedin?close")
+        //     }
+        //   }).content;
 
 // fallback to old school
-    responseContent = Meteor.http.post(
-      "https://api.linkedin.com/uas/oauth2/accessToken?grant_type=authorization_code&code=" + query.code + "&redirect_uri=" + Meteor.absoluteUrl("_oauth/linkedin?close") + "&client_id=" + config.clientId + "&client_secret=" + OAuth.openSecret(config.secret)
+        responseContent = Meteor.http.post(
+            "https://api.linkedin.com/uas/oauth2/accessToken?grant_type=authorization_code&code=" + query.code + "&redirect_uri=" + Meteor.absoluteUrl("_oauth/linkedin?close") + "&client_id=" + config.clientId + "&client_secret=" + OAuth.openSecret(config.secret)
+        ).content;
+    } catch (err) {
+        throw new Error("Failed to complete OAuth handshake with LinkedIn. " + err.message);
+    }
 
-     ).content;
-  } catch (err) {
-    throw new Error("Failed to complete OAuth handshake with LinkedIn. " + err.message);
-  }
+    // If 'responseContent' does not parse as JSON, it is an error.
+    if (!isJSON(responseContent)) {
+        throw new Error("Failed to complete OAuth handshake with LinkedIn. " + responseContent);
+    }
 
-  // If 'responseContent' does not parse as JSON, it is an error.
-  if (!isJSON(responseContent)) {
-    throw new Error("Failed to complete OAuth handshake with LinkedIn. " + responseContent);
-  }
+    // Success! Extract access token and expiration
+    var parsedResponse = JSON.parse(responseContent);
+    var accessToken = parsedResponse.access_token;
+    var expiresIn = parsedResponse.expires_in;
 
-  // Success! Extract access token and expiration
-  var parsedResponse = JSON.parse(responseContent);
-  var accessToken = parsedResponse.access_token;
-  var expiresIn = parsedResponse.expires_in;
+    if (!accessToken) {
+        throw new Error("Failed to complete OAuth handshake with LinkedIn " +
+        "-- can't find access token in HTTP response. " + responseContent);
+    }
 
-  if (!accessToken) {
-    throw new Error("Failed to complete OAuth handshake with LinkedIn " +
-      "-- can't find access token in HTTP response. " + responseContent);
-  }
-
-  return {
-    accessToken: accessToken,
-    expiresIn: expiresIn
-  };
+    return {
+        accessToken: accessToken,
+        expiresIn: expiresIn
+    };
 };
 
 var getIdentity = function (accessToken) {
-  try {
-    return Meteor.http.get("https://www.linkedin.com/v1/people/~", {
-      params: {oauth2_access_token: accessToken, format: 'json'}}).data;
-  } catch (err) {
-    throw new Error("Failed to fetch identity from LinkedIn. " + err.message);
-  }
+    try {
+        return Meteor.http.get("https://www.linkedin.com/v1/people/~", {
+            params: {oauth2_access_token: accessToken, format: 'json'}
+        }).data;
+    } catch (err) {
+        throw new Error("Failed to fetch identity from LinkedIn. " + err.message);
+    }
 };
 
-LinkedIn.retrieveCredential = function(credentialToken, credentialSecret) {
-  return OAuth.retrieveCredential(credentialToken, credentialSecret);
+LinkedIn.retrieveCredential = function (credentialToken, credentialSecret) {
+    return OAuth.retrieveCredential(credentialToken, credentialSecret);
 };
